@@ -1,19 +1,21 @@
 const express = require("express");
 const { connected } = require("./db");
 const { shortRouter } = require("./router/shortener.router");
+const { App } = require("@slack/bolt");
 
-const app = express();
+const appApi = express();
 require("dotenv").config();
+const axios = require("axios");
 
-app.use(express.json());
+appApi.use(express.json());
 
-app.get("/", (req, res) => {
+appApi.get("/", (req, res) => {
     res.send("ok");
 });
 
-app.use("/short", shortRouter);
+appApi.use("/short", shortRouter);
 
-app.listen(process.env.PORT, async (req, res) => {
+appApi.listen(process.env.PORT, async (req, res) => {
     try {
         await connected;
         console.log("Connected with db");
@@ -23,20 +25,58 @@ app.listen(process.env.PORT, async (req, res) => {
     console.log("server is connected on port 8080");
 });
 
-// var SlackBot = require("slackbots");
+const app = new App({
+    token: process.env.SLACK_BOT_TOKEN,
+    signingSecret: process.env.SLACK_SIGNING_SECRET,
+    socketMode: true,
+    appToken: process.env.SLACK_APP_TOKEN,
+});
 
-// // create a bot
-// var bot = new SlackBot({
-//     token: "xoxb-6663680980083-6657594018550-GLV5q4DZ2eCnyROhruiGl4Ze", // Add a bot https://my.slack.com/services/new/bot and put the token
-//     name: "apishortner",
+// app.command("/hello", async ({ command, ack, say }) => {
+//     await ack();
+//     await say(`hello, <@${command.user_id}>`);
 // });
 
-// bot.on("start", function () {
-//     // more information about additional params https://api.slack.com/methods/chat.postMessage
-//     var params = {
-//         icon_emoji: ":cat:",
-//     };
+app.message("hi", async ({ message, say }) => {
+    // The bot will respond when it receives a message containing "hello"
+    try {
+        console.log(message);
+        await say(`Hi there, <@${message.user}>!`);
+    } catch (error) {
+        console.log({ error: error });
+    }
+});
 
-//     // define channel, where bot exist. You can adjust it there https://my.slack.com/services
-//     bot.postMessageToChannel("general", "meow!", params);
-// });
+app.message(async ({ message, say }) => {
+    if (message.text && message.text.startsWith("<https://")) {
+        try {
+            const response = await axios.post(
+                "https://slack-shortener.onrender.com/short/shorten",
+
+                {
+                    url: removeAngleBrackets(message.text),
+                }
+            );
+
+            await say(`Shortened URL: ${response.data.shortURL}`);
+        } catch (error) {
+            console.error(error);
+            await say("Failed to shorten URL");
+        }
+    }
+});
+
+function removeAngleBrackets(str) {
+    if (str.startsWith("<") && str.endsWith(">")) {
+        return str.slice(1, -1);
+    } else {
+        return str;
+    }
+}
+
+(async () => {
+    // Start the app
+    await app.start(3000);
+
+    console.log("⚡️ Bolt app is running!");
+})();
