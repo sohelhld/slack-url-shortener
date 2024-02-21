@@ -4,7 +4,8 @@ This project is a simple Slack bot that allows users to shorten URLs directly wi
 
 ## Deploy link
 
-      [https://slack-url-shortener-zkwz.onrender.com](https://)
+    for SLACK-Shorter-API  [https://slack-url-shortener-zkwz.onrender.com](https://)
+    for Shorter-API [https://slack-shortener.onrender.com/short/shorten](https://)
 
 ## Features
 
